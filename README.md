@@ -2,6 +2,12 @@
 
 deterministic machines
 
+- stateless machine
+
+- fitness evolution
+
+- code with struct (not vector-set! style)
+
 # how to run
 
 open Racket

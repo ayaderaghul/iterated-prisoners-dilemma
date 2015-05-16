@@ -42,7 +42,6 @@
     (for/list ([i (length type-list)])
       (make-list (list-ref type-number i) (list-ref type-list i))))))
 
-
 (define (contest automaton contestant-list)
   (map (lambda (x) (take-sums (match-pair (list automaton x) 200)))
        contestant-list))
@@ -55,6 +54,20 @@
         automaton-cd
         automaton-dc
         automaton-dd)))
+
+(define (tft? automaton) (equal? tit-for-tat automaton))
+(define (all-Ds? automaton) (equal? all-Ds automaton))
+(define (identify-2-types population)
+  (list
+   (count all-Ds? population)
+   (count tft? population)))
+
+(define (create-test-population type-list type-amount)
+  (shuffle (flatten
+            (for/list ([i (length type-amount)])
+              (make-list (list-ref type-amount i)
+                         (list-ref type-list i))))))
+
 
 (define (next-claim automaton previous-claims)
   (let ([look-up
@@ -230,32 +243,36 @@
 
 (define population-mean (list 0))
 (define payoff-space (list 0))
+(define 2-types (list (list 0 0)))
 
 (define (rank-payoff criterion population rounds-per-match)
   (let ([payoff-list (flatten (match-population population rounds-per-match))])
     (sort (hash->list (scan payoff-list)) #:key criterion >)))
 
-(define (evolve population cycles speed rounds-per-match)
+(define (evolve population cycles speed per-type mutants rounds-per-match)
   (let* ([l (length population)]
          [round-results (match-population population rounds-per-match)]
          [payoff-list (flatten round-results)]
          [accum-fitness (accumulate (payoff-percentages payoff-list))]
-         [survivors (drop population speed)]
+         [survivors (drop population (+ speed (* per-type mutants)))]
          [successors
           (randomise-over-fitness accum-fitness population speed)]
-         [new-population (shuffle (append survivors successors))]
+         [mutation (random-population per-type mutants)]
+         [new-population (shuffle (append survivors successors mutation))]
          )
-    ;(set! series (append series (list (identify-2-types new-population))))
+   ; (set! 2-types (append 2-types (list (identify-2-types new-population))))
+    ;(plot-dynamic 2-types)
     (set! population-mean
           (append population-mean (list
                                    (exact->inexact
                                     (/ (sum payoff-list)
                                        (* l rounds-per-match))))))
     (if (zero? cycles)
-        (begin
+       ; #t
+       (begin
           (set! payoff-space round-results)
           population)
-        (evolve new-population (sub1 cycles) speed rounds-per-match)
+        (evolve new-population (sub1 cycles) speed per-type mutants rounds-per-match)
         )))
 
 ;; TV
@@ -300,3 +317,5 @@
   (define out (open-output-file filename #:mode 'text #:exists 'replace))
   (write-table data out)
   (close-output-port out))
+
+(send dynamic-frame show #t)
